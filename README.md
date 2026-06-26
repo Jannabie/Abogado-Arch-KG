@@ -18,6 +18,7 @@ Format `.KG` sendiri mendukung tiga kedalaman warna: **8bpp** (indexed/palette),
 
 | File | Peran |
 |---|---|
+| `ArcUNPACK.py` | Mengekstrak semua file `.KG` dari archive `.DSK` menggunakan index `.PFT` |
 | `ArcKGPACK.py` | Mengonversi file `.png` kembali ke format `.KG` dengan kompresi yang sesuai |
 | `ArcPACK.py` | Generic packer untuk membangun ulang arsip `.DSK` dari nol |
 | `ArcPATCH.py` | Menyuntikkan file `.KG` yang sudah dimodifikasi ke dalam arsip `.DSK` secara langsung |
@@ -32,35 +33,57 @@ Ketika gambar diekstrak dari arsip, informasi tentang kedalaman warna aslinya (8
 
 ## Cara Pakai
 
-Alur kerjanya terdiri dari tiga tahap utama: **pack → patch**, dengan satu tahap ekstrak yang biasanya sudah dilakukan sebelumnya oleh tool lain (misalnya GARbro atau tool serupa).
+Alur kerja lengkap (full roundtrip):
 
-### Tahap 1 — Konversi PNG ke Format KG
+### Tahap 0 — Ekstrak File .KG dari Archive DSK
 
-Setelah selesai mengedit file gambar dalam format `.png`, jalankan packer untuk mengonversinya kembali ke format `.KG`:
+```bash
+python ArcUNPACK.py GRAPHIC.dsk GRAPHIC.pft extracted/
+```
+
+Output: semua file `.KG` tersimpan di folder `extracted/` dengan nama sesuai index PFT.
+File `.KG` adalah format gambar biner proprietary Abogado Engine — belum bisa langsung diedit.
+
+### Tahap 1 — Decode .KG ke PNG (pakai GARbro)
+
+Buka file `.KG` hasil ekstrak menggunakan **GARbro** (atau tool image decoder lain),
+lalu export ke format `.PNG`. Setelah itu edit PNG sesuai kebutuhan.
+
+> **Penting:** `kg_metadata.json` tidak dibuat otomatis. Catat BPP asli setiap file
+> (8bpp / 24bpp / 32bpp) yang tampil di GARbro, karena dibutuhkan saat pack ulang.
+
+### Tahap 2 — Konversi PNG kembali ke Format .KG
+
+Setelah selesai mengedit PNG:
 
 ```bash
 # Memproses satu file
 python ArcKGPACK.py gambar.png
 
 # Memproses seluruh folder sekaligus
-python ArcKGPACK.py folder_gambar/
+python ArcKGPACK.py folder_png/
 ```
 
-Hasil konversi akan disimpan otomatis ke dalam subfolder bernama `packed_kg/` di dalam folder yang sama. Jika `kg_metadata.json` ditemukan di folder tersebut, packer akan menggunakannya untuk menentukan BPP target setiap gambar. Jika tidak ada, packer akan mencoba mendeteksi format secara otomatis.
+Hasil konversi tersimpan otomatis di subfolder `packed_kg/` dalam folder yang sama.
+Jika `kg_metadata.json` ditemukan di folder tersebut, BPP target tiap gambar akan dibaca darinya.
+Jika tidak ada, packer mencoba mendeteksi format secara otomatis.
 
-### Tahap 2 — Patch ke Arsip DSK
+### Tahap 3 — Patch ke Arsip DSK
 
-Setelah file `.KG` siap, suntikkan langsung ke dalam arsip `.DSK` tanpa perlu membongkar atau membangun ulang arsip dari nol:
+Setelah file `.KG` siap di `packed_kg/`, suntikkan ke arsip `.DSK`:
 
 ```bash
-python ArcPATCH.py GRAPHIC.dsk GRAPHIC.pft folder_packed_kg/
+python ArcPATCH.py GRAPHIC.dsk GRAPHIC.pft packed_kg/
 ```
 
-`ArcPATCH.py` bekerja secara **in-place** — hanya file yang ada di dalam folder patch yang akan diganti. File lain yang tidak disentuh akan dibiarkan apa adanya. Satu catatan penting: ukuran file hasil pack tidak boleh melebihi ukuran slot aslinya yang tercatat di `.PFT`, karena offset di arsip tidak bisa digeser. Jika lebih besar, file tersebut akan dilewati dan diberi tanda `[Skip]`.
+`ArcPATCH.py` bekerja **in-place** — hanya file yang ada di dalam folder patch yang diganti.
+File lain dibiarkan apa adanya. Ukuran file hasil pack **tidak boleh melebihi slot asli** di PFT;
+jika lebih besar, file tersebut dilewati dan ditandai `[Skip]`.
 
 ### Tentang ArcPACK
 
-`ArcPACK.py` digunakan jika ingin membangun ulang arsip `.DSK` dari nol, misalnya saat menambahkan file baru yang sebelumnya tidak ada di arsip original. Penggunaan ini lebih jarang diperlukan dibanding `ArcPATCH.py`.
+`ArcPACK.py` digunakan untuk membangun ulang arsip `.DSK` dari nol — misalnya jika ingin
+menambahkan file baru. Lebih jarang dibutuhkan dibanding `ArcPATCH.py`.
 
 ---
 
