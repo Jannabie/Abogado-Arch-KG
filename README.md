@@ -35,49 +35,42 @@ Ketika gambar diekstrak dari arsip, informasi tentang kedalaman warna aslinya (8
 
 Alur kerja lengkap (full roundtrip):
 
-### Tahap 0 — Ekstrak File .KG dari Archive DSK
+### Tahap 0 — Unpack DSK → PNG (langsung, tanpa tool lain)
 
 ```bash
 python ArcUNPACK.py GRAPHIC.dsk GRAPHIC.pft extracted/
 ```
 
-Output: semua file `.KG` tersimpan di folder `extracted/` dengan nama sesuai index PFT.
-File `.KG` adalah format gambar biner proprietary Abogado Engine — belum bisa langsung diedit.
+Output di folder `extracted/`:
+- Semua file `.KG` (raw)
+- Semua file `.PNG` hasil decode otomatis (8bpp/24bpp/32bpp)
+- `kg_metadata.json` berisi BPP asli tiap gambar (dibaca oleh ArcKGPACK.py)
 
-### Tahap 1 — Decode .KG ke PNG (pakai GARbro)
+### Tahap 1 — Edit gambar
 
-Buka file `.KG` hasil ekstrak menggunakan **GARbro** (atau tool image decoder lain),
-lalu export ke format `.PNG`. Setelah itu edit PNG sesuai kebutuhan.
+Buka dan edit file `.PNG` di image editor mana saja.
 
-> **Penting:** `kg_metadata.json` tidak dibuat otomatis. Catat BPP asli setiap file
-> (8bpp / 24bpp / 32bpp) yang tampil di GARbro, karena dibutuhkan saat pack ulang.
+> **Penting:** Jangan hapus `kg_metadata.json` dari folder. File ini menentukan
+> format BPP yang digunakan saat pack ulang nanti.
 
 ### Tahap 2 — Konversi PNG kembali ke Format .KG
 
 Setelah selesai mengedit PNG:
 
 ```bash
-# Memproses satu file
-python ArcKGPACK.py gambar.png
-
-# Memproses seluruh folder sekaligus
-python ArcKGPACK.py folder_png/
+python ArcKGPACK.py extracted/
 ```
 
-Hasil konversi tersimpan otomatis di subfolder `packed_kg/` dalam folder yang sama.
-Jika `kg_metadata.json` ditemukan di folder tersebut, BPP target tiap gambar akan dibaca darinya.
-Jika tidak ada, packer mencoba mendeteksi format secara otomatis.
+Hasil konversi tersimpan otomatis di subfolder `extracted/packed_kg/`.
 
 ### Tahap 3 — Patch ke Arsip DSK
 
-Setelah file `.KG` siap di `packed_kg/`, suntikkan ke arsip `.DSK`:
-
 ```bash
-python ArcPATCH.py GRAPHIC.dsk GRAPHIC.pft packed_kg/
+python ArcPATCH.py GRAPHIC.dsk GRAPHIC.pft extracted/packed_kg/
 ```
 
 `ArcPATCH.py` bekerja **in-place** — hanya file yang ada di dalam folder patch yang diganti.
-File lain dibiarkan apa adanya. Ukuran file hasil pack **tidak boleh melebihi slot asli** di PFT;
+Ukuran file hasil pack **tidak boleh melebihi slot asli** di PFT;
 jika lebih besar, file tersebut dilewati dan ditandai `[Skip]`.
 
 ### Tentang ArcPACK
