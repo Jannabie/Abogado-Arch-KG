@@ -1,88 +1,88 @@
 # Abogado Arch KG
 
-Image toolkit untuk file arsip visual novel **Shuumatsu no Sugoshikata ～The World is Drawing to an W/end.～** berbasis Abogado Engine.
+An image toolkit for the archive files of the visual novel **Shuumatsu no Sugoshikata ～The World is Drawing to an W/end.～**, built on the Abogado Engine.
 
 ---
 
-## Apa Ini?
+## What Is This?
 
-Game ini menyimpan semua aset gambarnya dalam format biner proprietary bernama `.KG`, yang dikemas ke dalam satu file arsip besar berekstensi `.DSK`. Arsip tersebut diindeks oleh file pasangannya berekstensi `.PFT`, yang menyimpan daftar nama file, posisi offset, dan ukuran slot masing-masing gambar di dalam arsip.
+This game stores all of its image assets in a proprietary binary format called `.KG`, which is packed into one large archive file with a `.DSK` extension. The archive is indexed by a companion file with a `.PFT` extension, which stores the list of filenames, offset positions, and slot sizes of each image inside the archive.
 
-Toolkit ini hadir untuk menjembatani semua itu — dari membongkar arsip, mengonversi gambar ke format yang bisa diedit, mengompresi ulang hasil editan kembali ke format `.KG`, hingga menyuntikkan file yang sudah dimodifikasi langsung ke dalam arsip tanpa perlu membongkar ulang semuanya.
+This toolkit bridges all of that — from unpacking the archive, converting images into an editable format, recompressing edited images back into `.KG` format, to injecting modified files directly into the archive without needing to unpack everything again.
 
-Format `.KG` sendiri mendukung tiga kedalaman warna: **8bpp** (indexed/palette), **24bpp** (RGB), dan **32bpp** (RGBA). Masing-masing punya struktur header dan algoritma kompresi yang berbeda, dan toolkit ini menangani ketiganya secara otomatis.
+The `.KG` format itself supports three color depths: **8bpp** (indexed/palette), **24bpp** (RGB), and **32bpp** (RGBA). Each has a different header structure and compression algorithm, and this toolkit handles all three automatically.
 
 ---
 
-## Struktur File
+## File Structure
 
-| File | Peran |
+| File | Role |
 |---|---|
-| `ArcUNPACK.py` | Mengekstrak semua file `.KG` dari archive `.DSK` menggunakan index `.PFT` |
-| `ArcKGPACK.py` | Mengonversi file `.png` kembali ke format `.KG` dengan kompresi yang sesuai |
-| `ArcPACK.py` | Generic packer untuk membangun ulang arsip `.DSK` dari nol |
-| `ArcPATCH.py` | Menyuntikkan file `.KG` yang sudah dimodifikasi ke dalam arsip `.DSK` secara langsung |
+| `ArcUNPACK.py` | Extracts all `.KG` files from the `.DSK` archive using the `.PFT` index |
+| `ArcKGPACK.py` | Converts `.png` files back into `.KG` format with the appropriate compression |
+| `ArcPACK.py` | Generic packer for rebuilding the `.DSK` archive from scratch |
+| `ArcPATCH.py` | Injects modified `.KG` files directly into the `.DSK` archive |
 
 ---
 
-## Tentang `kg_metadata.json`
+## About `kg_metadata.json`
 
-Ketika gambar diekstrak dari arsip, informasi tentang kedalaman warna aslinya (8bpp, 24bpp, atau 32bpp) disimpan dalam sebuah file `kg_metadata.json` di folder hasil ekstrak. File ini penting — saat proses packing ulang, `ArcKGPACK.py` membaca metadata ini untuk memastikan setiap gambar dikemas kembali dalam format BPP yang sama persis dengan aslinya. Jika gambar yang aslinya 8bpp dikemas sebagai 24bpp, game bisa gagal memuatnya atau tampilannya akan rusak.
+When images are extracted from the archive, information about their original color depth (8bpp, 24bpp, or 32bpp) is stored in a `kg_metadata.json` file inside the extraction output folder. This file is important — during the repacking process, `ArcKGPACK.py` reads this metadata to ensure each image is repacked in the exact same BPP format as the original. If an image that was originally 8bpp gets packed as 24bpp, the game may fail to load it or the display may be corrupted.
 
 ---
 
-## Cara Pakai
+## How to Use
 
-Alur kerja lengkap (full roundtrip):
+Full workflow (full roundtrip):
 
-### Tahap 0 — Unpack DSK → PNG (langsung, tanpa tool lain)
+### Step 0 — Unpack DSK → PNG (directly, no other tool needed)
 
 ```bash
 python ArcUNPACK.py GRAPHIC.dsk GRAPHIC.pft extracted/
 ```
 
-Output di folder `extracted/`:
-- Semua file `.KG` (raw)
-- Semua file `.PNG` hasil decode otomatis (8bpp/24bpp/32bpp)
-- `kg_metadata.json` berisi BPP asli tiap gambar (dibaca oleh ArcKGPACK.py)
+Output in the `extracted/` folder:
+- All `.KG` files (raw)
+- All `.PNG` files automatically decoded (8bpp/24bpp/32bpp)
+- `kg_metadata.json` containing the original BPP of each image (read by ArcKGPACK.py)
 
-### Tahap 1 — Edit gambar
+### Step 1 — Edit the images
 
-Buka dan edit file `.PNG` di image editor mana saja.
+Open and edit the `.PNG` files in any image editor.
 
-> **Penting:** Jangan hapus `kg_metadata.json` dari folder. File ini menentukan
-> format BPP yang digunakan saat pack ulang nanti.
+> **Important:** Do not delete `kg_metadata.json` from the folder. This file
+> determines the BPP format used during repacking later.
 
-### Tahap 2 — Konversi PNG kembali ke Format .KG
+### Step 2 — Convert PNG Back to .KG Format
 
-Setelah selesai mengedit PNG:
+Once you've finished editing the PNGs:
 
 ```bash
 python ArcKGPACK.py extracted/
 ```
 
-Hasil konversi tersimpan otomatis di subfolder `extracted/packed_kg/`.
+The converted output is automatically saved in the `extracted/packed_kg/` subfolder.
 
-### Tahap 3 — Patch ke Arsip DSK
+### Step 3 — Patch into the DSK Archive
 
 ```bash
 python ArcPATCH.py GRAPHIC.dsk GRAPHIC.pft extracted/packed_kg/
 ```
 
-`ArcPATCH.py` bekerja **in-place** — hanya file yang ada di dalam folder patch yang diganti.
-Ukuran file hasil pack **tidak boleh melebihi slot asli** di PFT;
-jika lebih besar, file tersebut dilewati dan ditandai `[Skip]`.
+`ArcPATCH.py` works **in-place** — only the files present in the patch folder are replaced.
+The size of the packed output **must not exceed the original slot size** in the PFT;
+if it's larger, the file is skipped and marked `[Skip]`.
 
-### Tentang ArcPACK
+### About ArcPACK
 
-`ArcPACK.py` digunakan untuk membangun ulang arsip `.DSK` dari nol — misalnya jika ingin
-menambahkan file baru. Lebih jarang dibutuhkan dibanding `ArcPATCH.py`.
+`ArcPACK.py` is used to rebuild the `.DSK` archive from scratch — for example, if you want to
+add new files. It's needed less often than `ArcPATCH.py`.
 
 ---
 
 ## Requirements
 
-Tool ini membutuhkan **Python 3.x** dan library **Pillow** untuk pemrosesan gambar. Instalasi dependensi bisa dilakukan dengan:
+This tool requires **Python 3.x** and the **Pillow** library for image processing. Dependencies can be installed with:
 
 ```bash
 pip install Pillow
@@ -90,28 +90,28 @@ pip install Pillow
 
 ---
 
-## Struktur File Arsip Game
+## Game Archive File Structure
 
-| File | Keterangan |
+| File | Description |
 |---|---|
-| `GRAPHIC.DSK` (atau nama lain) | Arsip utama yang berisi semua file `.KG` |
-| `GRAPHIC.PFT` | File indeks pasangan `.DSK`, berisi nama, offset, dan ukuran tiap file |
-| `kg_metadata.json` | Metadata BPP hasil ekstrak, dibaca saat proses packing ulang |
+| `GRAPHIC.DSK` (or other name) | Main archive containing all `.KG` files |
+| `GRAPHIC.PFT` | Index file paired with `.DSK`, containing the name, offset, and size of each file |
+| `kg_metadata.json` | BPP metadata from extraction, read during the repacking process |
 
 ---
 
-## Sebelum Mulai
+## Before You Start
 
-Selalu **backup file `.DSK` dan `.PFT` original** sebelum menjalankan proses patch. Operasi patch menulis langsung ke file arsip secara permanen, dan tidak ada mekanisme undo otomatis.
+Always **back up the original `.DSK` and `.PFT` files** before running the patch process. The patch operation writes directly to the archive file permanently, and there is no automatic undo mechanism.
 
 ---
 
 ## Disclaimer
 
-Toolkit ini dibuat semata-mata untuk keperluan edukasi, penelitian, dan modifikasi personal. Pengguna bertanggung jawab penuh untuk memastikan penggunaannya sesuai dengan aturan copyright dan Terms of Service dari game original.
+This toolkit is created solely for educational, research, and personal modification purposes. Users are fully responsible for ensuring their use complies with the copyright rules and Terms of Service of the original game.
 
 ---
 
-## Kontribusi
+## Contributing
 
-Pull request dan issue sangat welcome. Untuk perubahan besar, sebaiknya buka issue terlebih dahulu agar bisa didiskusikan sebelum implementasi.
+Pull requests and issues are very welcome. For major changes, please open an issue first so it can be discussed before implementation.
